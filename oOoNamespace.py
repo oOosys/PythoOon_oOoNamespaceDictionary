@@ -87,19 +87,19 @@ class oOoNamespace(dict):
 	def _extractMarkers(self, key):
 		"""Extract all markers from a key string."""
 		# Extract shortcut: o-@...@-o (the whole pattern, not the content)
-		shortcutMatch = re.search(r'o-@.*?@-o', key)
+		shortcutMatch = re.search(rf'{m["shortcutStart"]}.*?{m["shortcutEnd"]}', key)
 		shortcut = shortcutMatch.group(0) if shortcutMatch else None
 		
 		# Extract eval value: o@-...-@o (content between markers)
-		evalMatch = re.search(r'o@-(.*?)-@o', key, re.DOTALL)
+		evalMatch = re.search(rf'{m["evalStart"]}(.*?){m["evalEnd"]}', key, re.DOTALL)
 		evalStr = evalMatch.group(1).strip() if evalMatch else None
 		
 		# Extract exec code: o@~...~@o (content between markers)
-		execMatch = re.search(r'o@~(.*?)~@o', key, re.DOTALL)
+		execMatch = re.search(rf'{m["execStart"]}(.*?){m["execEnd"]}', key, re.DOTALL)
 		execStr = execMatch.group(1).strip() if execMatch else None
 		
 		# Extract shell command: o~$...$~o (content between markers)
-		shellMatch = re.search(r'o~\$(.*?)\$~o', key, re.DOTALL)
+		shellMatch = re.search(rf'{m["shellStart"]}(.*?){m["shellEnd"]}', key, re.DOTALL)
 		shellStr = shellMatch.group(1).strip() if shellMatch else None
 		if self.debugMode : print(f">>>>> {shortcutMatch=}  {evalMatch=}  {execMatch=}  {shellMatch=}")
 		if self.debugMode : print(f"	>>>>> {shortcut=}  {evalStr=}  {execStr=}   {shellStr=}")
@@ -279,24 +279,30 @@ class oOoNamespace(dict):
 if __name__ == "__main__":
 	print("="*70)
 	print("oOoNamespace - Quick Test")
-	print("="*70)
+	print("="*70, "\n\n\n")
+
 	o = oOoNamespace()
+	o['o-@Max.Dart 🎯 Score?@-o = o@-100-@o Points'] 
+	print(f"{ o['o-@Max.Dart 🎯 Score?@-o'] = }")
+	#	 prints 	:   o['o-@Max.Dart 🎯 Score?@-o'] = 100 
+	print(f"{ o.getOriginalKey('o-@Max.Dart 🎯 Score?@-o')}")
+	#	 prints 	:  o-@Max.Dart 🎯 Score?@-o = o@-100-@o Points
 	
 	# Test eval - assignment triggers evaluation via __setitem__ -> __getitem__
 	print("\n1. Testing EVAL marker:")
-	o["🎯 Score o-@SC@-o o@-100-@o"] 
+	o['🎯 Score o-@SC@-o = o@-100-@o'] 
 	print(f"   Score value: {o['''
 		Mentioning: o-@SC@-o in the dictionary key is enough to obtain the associated 
 			value no matter which else text occure (also multiline)}''']=}")
 	
 	# Test exec - should print during execution
 	print("\n2. Testing EXEC marker:")
-	o["⚙️ Init o-@INIT@-o o@~print('>>> Initialized from exec!')~@o"]
+	o['⚙️ Init o-@INIT@-o o@~print(">>> Initialized from exec!")~@o']
 	print(f"   Init stored value: {repr(o['o-@INIT@-o'])}")
 	
 	# Test shell
 	print("\n3. Testing SHELL marker:")
-	o["💻 User o-@USER@-o o~$echo $USER$~o"] 
+	o['💻 User o-@USER@-o o~$echo $USER$~o'] 
 	print(f"   User: {o['o-@USER@-o']}")
 	
 	# Test mutable variable
@@ -326,45 +332,44 @@ if __name__ == "__main__":
 	
 	print("\n7: Multilingual Variable Names")
 	# Japanese
-	o["(Temperature) o-@温度@-o o@-36.5-@o"]
-	o["(Speed) o-@Скорость@-o o@-120.5-@o"]
+	o['(Temperature) o-@温度@-o o@-36.5-@o']
+	o['(Speed) o-@Скорость@-o o@-120.5-@o']
 	print(f"Temperature: {o['o-@o温度@-o']=}°C")
 	print(f"Speed: {o['o-@Скорость@-o']=} km/h")
 
 	print("\n8: Evaluated Mathematical Expressions")
-	o[" o-@🧮CircleR=10radius AREA?@-o					o@-3.14159 * (10**2)-@o"]
-	o[" o-@📐sides are 3 and 4, hypotenuse?@-o			o@-(3**2 + 4**2)**0.5-@o"] 
-	o[" o-@➗AverageValueOf: 10,20,30,40,50 ?@-o		o@-sum([10,20,30,40,50])/5-@o"]
+	o[' o-@🧮CircleR=10radius AREA?@-o					o@-3.14159 * (10**2)-@o']
+	o[' o-@📐sides are 3 and 4, hypotenuse?@-o			o@-(3**2 + 4**2)**0.5-@o'] 
+	o[' o-@➗AverageValueOf: 10,20,30,40,50 ?@-o		o@-sum([10,20,30,40,50])/5-@o']
 	
 	print(f"Circle Area (r=10): {o['o-@🧮CircleR=10radius AREA?@-o']=}")
 	print(f"Hypotenuse (3,4): {o['o-@📐sides are 3 and 4, hypotenuse?@-o']=}")
 	print(f"Average: {o['➗AverageValueOf: 10,20,30,40,50 ?@-o']=}")
 
 	print("\n9: Real-World Configuration System")
-	config = oOoNamespace()
 	# Database settings (immutable)
-	config["🗄️ Database Host o-@DB_HOST@-o   o@-'db.example.com'-@o"] 
-	config["🔑 Database Port o-@DB_PORT@-o	o@-5432-@o"] 
-	config["👤 Database User o-@DB_USER@-o	o@-'admin'-@o"] 
+	o['🗄️ Database Host o-@DB_HOST@-o   o@-"db.example.com"-@o'] 
+	o['🔑 Database Port o-@DB_PORT@-o	o@-5432-@o'] 
+	o['👤 Database User o-@DB_USER@-o	o@-"admin"-@o'] 
 	# API settings (immutable)
-	config["🌐 API Endpoint o-@API_URL@-o o@-'https://api.example.com/v1'-@o"] 
-	config["⏱️ API Timeout o-@TIMEOUT@-o o@-30-@o"] 
+	o['🌐 API Endpoint o-@API_URL@-o o@-"https://api.example.com/v1"-@o'] 
+	o['⏱️ API Timeout o-@TIMEOUT@-o o@-30-@o'] 
 	# Runtime counters (mutable)
-	config["📊 Request Count o-@REQ_CNT@-o"] = 0
-	config["⚠️ Error Count o-@ERR_CNT@-o"] = 0
-	
+	o["📊 Request Count o-@REQ_CNT@-o"] = 0
+	o["⚠️ Error Count o-@ERR_CNT@-o"] = 0
+
 	print("Configuration loaded:")
-	print(f"  DB: {config['o-@DB_HOST@-o']}:{config['o-@DB_PORT@-o']}")
-	print(f"  API: {config['o-@API_URL@-o']}")
-	print(f"  Timeout: {config['o-@TIMEOUT@-o']} s")
+	print(f'  DB: {o['o-@DB_HOST@-o']}:{o['o-@DB_PORT@-o']}')
+	print(f'  API: {o['o-@API_URL@-o']}')
+	print(f'  Timeout: {o['o-@TIMEOUT@-o']} s')
 	
 	# Simulate requests
-	config["o-@REQ_CNT@-o"] = 150
-	config["o-@ERR_CNT@-o"] = 3
+	o['o-@REQ_CNT@-o'] = 150
+	o['o-@ERR_CNT@-o'] = 3
 	
 	print(f"\nRuntime Stats:")
-	print(f"  Requests: {config['o-@REQ_CNT@-o']}")
-	print(f"  Errors: {config['o-@ERR_CNT@-o']}")
+	print(f"  Requests: {o['o-@REQ_CNT@-o']}")
+	print(f"  Errors: {o['o-@ERR_CNT@-o']}")
 	
 	print("\n" + "="*70)
 	print("✓ All tests completed!")
